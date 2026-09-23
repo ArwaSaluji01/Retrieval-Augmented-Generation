@@ -1,14 +1,23 @@
 # Retrieval-Augmented Generation — Miniature Reimplementation
 
-## Summary
+## Project Summary
 
-This project implements the core ideas of **Retrieval-Augmented Generation (RAG)** introduced by Lewis et al. in *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*.
+This project is a miniature implementation of Retrieval-Augmented Generation (RAG), based on Lewis et al., *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*.
 
-The implementation combines a pretrained sequence-to-sequence generator with an external dense retrieval system. Given a question, the system converts the query into a dense representation, retrieves the most relevant passages from a FAISS index, and conditions the generator on the retrieved evidence.
+The system combines:
 
-The project implements a miniature **RAG-Sequence** training pipeline using SQuAD 1.1, a Sentence-Transformer dense retriever, FAISS, and FLAN-T5-base. It also demonstrates the RAG-Token formulation and evaluates retrieval and generation performance using retrieval recall, Exact Match, and token-level F1.
+1. A dense sentence-embedding retriever
+2. A FAISS vector index
+3. Retrieved SQuAD contexts as non-parametric memory
+4. A FLAN-T5 sequence-to-sequence generator
+5. RAG-Sequence-style marginal likelihood training
+6. Exact Match and token-level F1 evaluation
+7. Retrieval recall and ablation analysis
 
-The implementation intentionally differs from the original paper in scale and model selection. The paper uses DPR, BART-large, and a roughly 21-million-passage Wikipedia index, whereas this project uses smaller components suitable for experimentation in Google Colab.
+The implementation is intentionally smaller than the original paper's system so that the core RAG mechanism can be studied and trained in Google Colab.
+
+The current results demonstrate that adding retrieved external context substantially improves performance over the generator-only baseline.
+
 
 ## Key Components
 
@@ -27,15 +36,21 @@ The implementation intentionally differs from the original paper in scale and mo
 
 How can external non-parametric memory improve a pretrained generative model on knowledge-intensive question answering?
 
-## Results
+## Current Results
 
-Final evaluation results will be added after completion of model training.
+Evaluation was performed on 500 SQuAD validation examples.
 
-* Top-3 Retrieval Recall: `<TO_UPDATE>`
-* RAG Exact Match: `<TO_UPDATE>`
-* RAG F1: `<TO_UPDATE>`
-* No-Retrieval Exact Match: `<TO_UPDATE>`
-* No-Retrieval F1: `<TO_UPDATE>`
+| Metric                   |     Result |
+| ------------------------ | ---------: |
+| RAG Exact Match          | **40.20%** |
+| RAG Token F1             | **52.33%** |
+| Top-3 Retrieval Recall   | **74.00%** |
+| No-Retrieval Exact Match |  **1.00%** |
+| No-Retrieval Token F1    |  **5.33%** |
+
+The miniature RAG system substantially improves answer quality compared with the generator-only baseline.
+
+However, the current Top-1/Top-3/Top-5 ablation should not yet be interpreted because the inference function currently returns the answer generated from the highest-ranked retrieved document. A proper K-dependent decoding implementation remains a future improvement.
 
 ## Research Value
 
