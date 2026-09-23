@@ -12,25 +12,17 @@ The implementation is designed as an educational and research exercise that demo
 
 ## Project Overview
 
-Large language models store substantial amounts of knowledge in their parameters, but accessing, updating, and inspecting this knowledge can be difficult.
+This project implements a miniature research-oriented version of Retrieval-Augmented Generation (RAG), based on Lewis et al., *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*.
 
-RAG addresses this by combining two forms of memory:
+The implementation demonstrates the core RAG pipeline:
 
-* **Parametric memory:** a pretrained sequence-to-sequence generator.
-* **Non-parametric memory:** an external dense vector index containing knowledge passages.
+**Question → Dense Retrieval → FAISS Document Index → Retrieved Context → Seq2Seq Generation → RAG-Sequence Training → Evaluation**
 
-For a given question, a neural retriever searches the external knowledge base for relevant passages. The retrieved passages are then provided to the generator, allowing generation to be conditioned on external evidence.
+The original RAG architecture combines a pretrained neural retriever, a non-parametric document index, and a pretrained sequence-to-sequence generator, with retrieved documents treated as latent variables during generation.
 
-This project implements a miniature version of this architecture using:
+Because the original experiments use large-scale Wikipedia indexes, pretrained DPR retrieval, BART-large, and substantially larger computational resources, this project uses a smaller SQuAD-based dataset and lightweight pretrained models suitable for Google Colab.
 
-* Sentence-Transformer dense embeddings
-* FAISS similarity search
-* SQuAD 1.1 passages and questions
-* FLAN-T5-base as the sequence-to-sequence generator
-* RAG-Sequence-style marginal likelihood
-* RAG-Token formulation demonstration
-* Exact Match and token-level F1 evaluation
-* Retrieval ablation experiments
+The goal is to reproduce and understand the **core algorithmic ideas**, rather than reproduce the original paper's exact experimental scale or reported scores.
 
 ---
 
@@ -48,22 +40,21 @@ Official paper: see the arXiv link provided with this repository documentation.
 
 ## Dataset
 
-### SQuAD 1.1
+The implementation uses the **SQuAD dataset** for a miniature open-domain question-answering experiment.
 
-The final training experiment uses **SQuAD 1.1**, a question-answering dataset containing questions paired with Wikipedia-derived passages.
+The dataset is divided into:
 
-For this miniature implementation:
+* **Training:** 2,000 examples used for miniature RAG training
+* **Validation:** 500 examples used for evaluation
+* **Retrieval corpus:** unique contexts extracted from the training split
 
-* Training examples: **5,000**
-* Validation examples: **500**
-* Retrieval corpus: unique contexts extracted from the selected training examples
-* Retrieval depth: **Top-K = 3** for the main RAG configuration
+Each retrieval document contains:
 
-The original RAG paper instead uses a large Wikipedia knowledge base consisting of approximately 21 million passages. Therefore, the retrieval corpus in this project is intentionally much smaller.
+* document ID
+* title
+* context text
 
-Dataset source:
-
-**Stanford Question Answering Dataset (SQuAD 1.1)**
+The retrieval corpus is embedded using `sentence-transformers/all-MiniLM-L6-v2` and indexed with FAISS using inner-product similarity.
 
 ---
 
@@ -159,37 +150,28 @@ The following configurations are compared:
 
 ## Results
 
-### Retrieval
+Evaluation was performed on **500 SQuAD validation examples**.
 
-| Metric                 |        Result |
-| ---------------------- | ------------: |
-| Top-1 Retrieval Recall | `<TO_UPDATE>` |
-| Top-3 Retrieval Recall | `<TO_UPDATE>` |
-| Top-5 Retrieval Recall | `<TO_UPDATE>` |
+| System       | Exact Match |   Token F1 |
+| ------------ | ----------: | ---------: |
+| No Retrieval |       1.00% |      5.33% |
+| RAG          |  **40.20%** | **52.33%** |
 
-### Answer Generation
+### Retrieval Performance
 
-| Configuration |   Exact Match |            F1 |
-| ------------- | ------------: | ------------: |
-| No Retrieval  | `<TO_UPDATE>` | `<TO_UPDATE>` |
-| RAG Top-1     | `<TO_UPDATE>` | `<TO_UPDATE>` |
-| RAG Top-3     | `<TO_UPDATE>` | `<TO_UPDATE>` |
-| RAG Top-5     | `<TO_UPDATE>` | `<TO_UPDATE>` |
+| Metric                 |     Result |
+| ---------------------- | ---------: |
+| Top-3 Retrieval Recall | **74.00%** |
 
-### Training
+The results show a substantial improvement when retrieved context is provided to the generator. In this miniature implementation, Exact Match increases from **1.00% without retrieval to 40.20% with retrieval**, while token-level F1 increases from **5.33% to 52.33%**.
 
-| Parameter           |                Value |
-| ------------------- | -------------------: |
-| Training examples   |                5,000 |
-| Validation examples |                  500 |
-| Epochs              |                    1 |
-| Top-K               |                    3 |
-| Generator           |         FLAN-T5-base |
-| Retriever           | Sentence-Transformer |
-| Index               |    FAISS IndexFlatIP |
-| Learning rate       |                 2e-5 |
+These results are specific to this implementation, dataset split, pretrained models, and training configuration. They should not be compared directly with the original paper's reported results.
 
-> **Note:** The result placeholders above will be replaced after the final training and evaluation runs.
+### Top-K Ablation
+
+A Top-1/Top-3/Top-5 ablation is implemented, but the current generation function selects the answer produced from the highest-ranked retrieved document. Consequently, the current Top-K scores are identical and should **not** be interpreted as evidence that K has no effect.
+
+A proper Top-K decoding comparison is a planned improvement.
 
 ---
 
@@ -218,22 +200,39 @@ This implementation preserves that central design while reducing model and datas
 
 ---
 
+## Differences from the Original Paper
+
+This implementation intentionally uses a smaller setup suitable for Google Colab.
+
+| Original RAG                          | This implementation                      |
+| ------------------------------------- | ---------------------------------------- |
+| Wikipedia-scale non-parametric memory | SQuAD-derived retrieval corpus           |
+| DPR retriever                         | MiniLM sentence embeddings               |
+| FAISS Wikipedia index                 | FAISS `IndexFlatIP`                      |
+| BART-large generator                  | FLAN-T5-base                             |
+| Joint retriever + generator training  | Generator-focused miniature training     |
+| Large-scale training                  | 2,000 training examples                  |
+| Full RAG-Sequence decoding            | Simplified retrieved-document generation |
+| Large-scale experiments               | 500-example validation evaluation        |
+
+The original paper describes RAG-Sequence as marginalizing generation probabilities across retrieved documents and uses document-wise decoding for RAG-Sequence inference.
+
+Therefore, this project should be viewed as a **conceptual and algorithmic reimplementation**, not an exact reproduction of the original training setup.
+
+---
+
 ## What I Learned
 
-This project provided hands-on understanding of several components of modern retrieval-augmented NLP systems:
+This implementation helped demonstrate several key RAG concepts:
 
-* How dense document representations are created and indexed.
-* How FAISS performs efficient similarity search over dense vectors.
-* How retrieval and generation can be combined into a single pipeline.
-* How external non-parametric memory complements a pretrained language model.
-* How latent retrieved documents can be marginalized during training.
-* The difference between RAG-Sequence and RAG-Token.
-* How retrieval quality directly affects downstream generation.
-* How to evaluate both retrieval and answer generation independently.
-* How ablation studies can be used to understand the contribution of individual components.
-* The practical trade-offs between reproducing a research paper exactly and building a computationally feasible miniature implementation.
-
-Most importantly, the project helped bridge the gap between reading a research paper and implementing its core algorithmic ideas from scratch.
+* How dense vector representations can be used for semantic retrieval.
+* How FAISS performs efficient similarity search over document embeddings.
+* How retrieved documents can be incorporated into a sequence-to-sequence generator.
+* How RAG-Sequence models marginalize over multiple retrieved documents during training.
+* How retrieval quality affects downstream answer generation.
+* How to evaluate a retrieval-augmented system using both retrieval metrics and answer-generation metrics.
+* Why retrieval and generation should be evaluated separately rather than relying only on final answer accuracy.
+* The practical differences between a research paper's full-scale implementation and a resource-constrained educational reproduction.
 
 ---
 
